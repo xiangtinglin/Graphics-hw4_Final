@@ -1,0 +1,11 @@
+1. 相機與 primary rays 		>	同Hw
+2. 幾何物件與場景		>	同Hw
+3. 加速結構Group-level AABB	>	我的Hw3　簡單grid
+4. 幾何相交測試			>	同Hw
+5. Whitted-style recursive ray tracing(局部照明 + 反射光線) > GPT
+6. Sphere area lights（球面面光源 + Monte Carlo）
+	。新指令 SL x y z r er eg eb：
+		建立一顆幾何球（center, radius, material = 當前 M）
+		同時記錄一個 sphere_light{c,r,Le}，Le 為發光顏色 (er,eg,eb)
+	。BRDF, pdf
+	。最終像素顏色 = 點光源 Phong + 球面面光源 MC + 遞迴反射。
