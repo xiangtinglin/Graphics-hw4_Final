@@ -102,7 +102,7 @@ int load_scene_from_file(const char* filename,
         } else if (strcmp(tag,"M") == 0) {
             double cr, cg, cb, kd, ks, shininess, refl;
             if (sscanf(p, "%*s %lf %lf %lf %lf %lf %lf %lf",
-                       &cr,&cg,&cb,&kd,&ks,&shininess,&refl) == 8) {
+                       &cr,&cg,&cb,&kd,&ks,&shininess,&refl) == 7) {
                 currentMat.color        = vec3(cr,cg,cb);
                 //currentMat.ka           = ka;
                 currentMat.kd           = kd;
@@ -351,5 +351,6 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
 
 
