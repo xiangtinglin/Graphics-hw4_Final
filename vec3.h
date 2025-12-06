@@ -1,3 +1,4 @@
+// Last confirm date 2025/12/06 
 #ifndef VEC3_H
 #define VEC3_H
 
@@ -101,5 +102,6 @@ inline vec3 unit_vector(const vec3& v) {
 inline vec3 operator/(const vec3& a, const vec3& b) {
     return vec3(a.x()/b.x(), a.y()/b.y(), a.z()/b.z());
 }
+
 
 #endif
