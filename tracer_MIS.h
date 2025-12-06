@@ -1,3 +1,4 @@
+// Last confirm date 2025/12/06 
 #ifndef TRACER_MIS_H
 #define TRACER_MIS_H
 
@@ -23,18 +24,19 @@ inline double balance_weight(double n_a, double pdf_a,
     return a / denom;
 }
 
-// evaluate_mis 可以選擇性地回傳「BRDF / light 的平均權重」
-// weight_color = (avg_brdf_weight, avg_light_weight, 0)
+// evaluate_mis：
+//   - 回傳最終 radiance L
+//   - 若 ratio_color != 0，順便算出：
+//       R = BRDF-sampling 貢獻比例
+//       G = light-sampling 貢獻比例
 inline vec3 evaluate_mis(const MISSample* light_samples, int n_light_samples,
                          const MISSample* brdf_samples,  int n_brdf_samples,
                          double n_light, double n_brdf,
-                         vec3* weight_color = 0) {
+                         vec3* ratio_color = 0) {
     vec3 L(0.0,0.0,0.0);
 
-    double sum_w_light = 0.0;
-    int    cnt_w_light = 0;
-    double sum_w_brdf  = 0.0;
-    int    cnt_w_brdf  = 0;
+    vec3 L_from_light(0.0,0.0,0.0);
+    vec3 L_from_brdf (0.0,0.0,0.0);
 
     // Light-sampling branch
     for (int i = 0; i < n_light_samples; ++i) {
@@ -44,12 +46,9 @@ inline vec3 evaluate_mis(const MISSample* light_samples, int n_light_samples,
         double w = balance_weight(n_light, s->pdf_light,
                                   n_brdf,  s->pdf_brdf);
 
-        if (weight_color) {
-            sum_w_light += w;
-            cnt_w_light++;
-        }
-
-        L += s->f * s->Li * (s->cos_theta * w / s->pdf_light);
+        vec3 contrib = s->f * s->Li * (s->cos_theta * w / s->pdf_light);
+        L           += contrib;
+        L_from_light += contrib;
     }
 
     // BRDF-sampling branch
@@ -60,18 +59,27 @@ inline vec3 evaluate_mis(const MISSample* light_samples, int n_light_samples,
         double w = balance_weight(n_brdf,  s->pdf_brdf,
                                   n_light, s->pdf_light);
 
-        if (weight_color) {
-            sum_w_brdf += w;
-            cnt_w_brdf++;
-        }
-
-        L += s->f * s->Li * (s->cos_theta * w / s->pdf_brdf);
+        vec3 contrib = s->f * s->Li * (s->cos_theta * w / s->pdf_brdf);
+        L           += contrib;
+        L_from_brdf += contrib;
     }
 
-    if (weight_color) {
-        double avg_light = (cnt_w_light > 0) ? (sum_w_light / cnt_w_light) : 0.0;
-        double avg_brdf  = (cnt_w_brdf  > 0) ? (sum_w_brdf  / cnt_w_brdf ) : 0.0;
-        *weight_color = vec3(avg_brdf, avg_light, 0.0); // R=BRDF, G=Light
+    if (ratio_color) {
+        // 用簡單的 luminance 近似衡量能量大小
+        auto luminance = [](const vec3& c) {
+            return 0.2126 * c.x() + 0.7152 * c.y() + 0.0722 * c.z();
+        };
+        double lum_light = luminance(L_from_light);
+        double lum_brdf  = luminance(L_from_brdf);
+        double lum_sum   = lum_light + lum_brdf;
+
+        if (lum_sum > 0.0) {
+            double r = lum_brdf  / lum_sum;  // BRDF 比例
+            double g = lum_light / lum_sum;  // Light 比例
+            *ratio_color = vec3(r, g, 0.0);
+        } else {
+            *ratio_color = vec3(0.0,0.0,0.0);
+        }
     }
 
     return L;
@@ -130,10 +138,8 @@ inline void gather_mis_samples(const Scene* scene,
 
             vec3 f = eval_brdf(rec->mat, rec->normal, wi, wo);
 
-            double kd = rec->mat->kd;
-            double ks = rec->mat->ks;
-            if (kd < 0.0) kd = 0.0;
-            if (ks < 0.0) ks = 0.0;
+            double kd, ks;
+            get_effective_kd_ks(rec->mat, &kd, &ks);
             double sum = kd + ks;
             double pd = 1.0, ps = 0.0;
             if (sum > 0.0) {
@@ -209,7 +215,7 @@ inline vec3 direct_lighting(const Scene* scene,
 }
 
 //  Direct lighting（MIS 權重圖用） 
-// 回傳顏色：R=BRDF 權重大時偏紅、G=Light 權重大時偏綠
+// 回傳顏色：R=BRDF-sampling 能量比例、G=light-sampling 能量比例
 inline vec3 direct_lighting_mis_weight(const Scene* scene,
                                        const HitRecord* rec,
                                        const vec3& wo) {
@@ -220,18 +226,18 @@ inline vec3 direct_lighting_mis_weight(const Scene* scene,
     double n_light = 0.0;
     double n_brdf  = 0.0;
 
-    // 權重圖固定看「MIS」模式：兩種 sampling 都啟用
+    // 權重圖固定看 MIS 模式：兩種 sampling 都啟用
     gather_mis_samples(scene, rec, wo, MODE_MIS,
                        light_samples, &n_light_samples,
                        brdf_samples, &n_brdf_samples,
                        &n_light, &n_brdf);
 
-    vec3 weight_color(0.0,0.0,0.0);
+    vec3 ratio_color(0.0,0.0,0.0);
     (void) evaluate_mis(light_samples, n_light_samples,
                         brdf_samples, n_brdf_samples,
                         n_light, n_brdf,
-                        &weight_color);
-    return weight_color;
+                        &ratio_color);
+    return ratio_color;
 }
 
 //  Tone mapping / Gamma / background 
@@ -295,7 +301,7 @@ inline vec3 ray_color(const Scene* scene,
     return ambient + direct + refl_color;
 }
 
-//  ray_mis_weight_color：只算 MIS 權重顏色 
+//  ray_mis_weight_color：只算 MIS 比例顏色 
 
 inline vec3 ray_mis_weight_color(const Scene* scene,
                                  const Ray* r,
