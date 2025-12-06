@@ -11,7 +11,7 @@
 //   0: 關閉 Phong，高光能量併入 diffuse，整體亮度不變
 // ============================================================
 #ifndef ENABLE_PHONG_SPECULAR
-#define ENABLE_PHONG_SPECULAR 0     // 1:on, 0:off
+#define ENABLE_PHONG_SPECULAR 1     // 1:on, 0:off
 #endif
 
 // Kd, Ks 的「有效值」：考慮 Phong switch 後的版本
@@ -196,3 +196,4 @@ inline int sample_brdf_direction(const Material* mat,
 }
 
 #endif // TRACER_BSDF_SAMPLING_H
+
