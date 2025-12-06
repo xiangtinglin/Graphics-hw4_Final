@@ -284,7 +284,7 @@ inline vec3 ray_color(const Scene* scene,
 
     vec3 wo = -unit_vector(r->dir);
 
-    vec3 ambient = rec.mat->ka * rec.mat->color;
+    //vec3 ambient = rec.mat->ka * rec.mat->color;
     vec3 direct  = direct_lighting(scene, &rec, wo, mode);
 
     vec3 refl_color(0.0,0.0,0.0);
@@ -298,7 +298,8 @@ inline vec3 ray_color(const Scene* scene,
                      ray_color(scene, &refl_ray, mode, depth - 1);
     }
 
-    return ambient + direct + refl_color;
+    //return ambient + direct + refl_color;
+    return direct + refl_color;
 }
 
 //  ray_mis_weight_color：只算 MIS 比例顏色 
@@ -324,3 +325,4 @@ inline vec3 ray_mis_weight_color(const Scene* scene,
 }
 
 #endif // TRACER_MIS_H
+
