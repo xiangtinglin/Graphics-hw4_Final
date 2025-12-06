@@ -1,10 +1,40 @@
+// Last confirm date 2025/12/06 
 #ifndef TRACER_BSDF_SAMPLING_H
 #define TRACER_BSDF_SAMPLING_H
 
 #include "Speed_up.h"
-#include "tracer_light_source.h"  
+#include "tracer_light_source.h"
 
-//  LOCAL 座標轉換 
+// ============================================================
+// Phong specular 開關
+//   1: 啟用 Phong 高光 (原本行為)
+//   0: 關閉 Phong，高光能量併入 diffuse，整體亮度不變
+// ============================================================
+#ifndef ENABLE_PHONG_SPECULAR
+#define ENABLE_PHONG_SPECULAR 0     // 1:on, 0:off
+#endif
+
+// Kd, Ks 的「有效值」：考慮 Phong switch 後的版本
+inline void get_effective_kd_ks(const Material* mat,
+                                double* kd_out,
+                                double* ks_out) {
+    double kd = mat->kd;
+    double ks = mat->ks;
+    if (kd < 0.0) kd = 0.0;
+    if (ks < 0.0) ks = 0.0;
+
+#if ENABLE_PHONG_SPECULAR
+    // 正常情況：Kd, Ks 如材質設定
+    *kd_out = kd;
+    *ks_out = ks;
+#else
+    // 關掉 Phong：把 Ks 能量丟回 diffuse
+    *kd_out = kd + ks;
+    *ks_out = 0.0;
+#endif
+}
+
+// ----------------- ONB -----------------
 
 struct ONB {
     vec3 u, v, w;
@@ -25,7 +55,7 @@ inline vec3 local_to_world(const ONB& onb, const vec3& a) {
     return a.x() * onb.u + a.y() * onb.v + a.z() * onb.w;
 }
 
-//  BSDF sampling（半球 / Phong lobe）  
+// ----------------- BSDF sampling（半球 / Phong lobe） -----------------
 
 inline vec3 sample_cosine_hemisphere(const vec3& n, double u1, double u2) {
     double r = sqrt(u1);
@@ -73,7 +103,7 @@ inline double phong_lobe_pdf(double shininess,
     return (shininess + 1.0) * pow(cos_alpha, shininess) / (2.0 * M_PI);
 }
 
-//  BRDF eval（Lambert + Phong） 
+// ----------------- BRDF eval（Lambert + Phong） -----------------
 
 inline vec3 eval_brdf(const Material* mat,
                       const vec3& n,
@@ -86,33 +116,39 @@ inline vec3 eval_brdf(const Material* mat,
     if (cos_theta_i < 0.0) cos_theta_i = 0.0;
     if (cos_theta_i <= 0.0) return vec3(0.0, 0.0, 0.0);
 
+    double kd_eff, ks_eff;
+    get_effective_kd_ks(mat, &kd_eff, &ks_eff);
+
     // Diffuse: ρ_d / π
-    vec3 fd = (mat->kd / M_PI) * mat->color;
+    vec3 fd = (kd_eff / M_PI) * mat->color;
 
     // Specular (Phong)
-    vec3 rdir = reflect_vec(-wo_n, n);
-    double cos_alpha = dot(unit_vector(rdir), wi_n);
-    if (cos_alpha < 0.0) cos_alpha = 0.0;
     vec3 fs(0.0,0.0,0.0);
-    if (cos_alpha > 0.0 && mat->ks > 0.0) {
-        double norm = (mat->shininess + 2.0) / (2.0 * M_PI);
-        fs = mat->ks * norm * pow(cos_alpha, mat->shininess) * mat->color;
+#if ENABLE_PHONG_SPECULAR
+    if (ks_eff > 0.0) {
+        vec3 rdir = reflect_vec(-wo_n, n);
+        double cos_alpha = dot(unit_vector(rdir), wi_n);
+        if (cos_alpha < 0.0) cos_alpha = 0.0;
+        if (cos_alpha > 0.0) {
+            double norm = (mat->shininess + 2.0) / (2.0 * M_PI);
+            fs = ks_eff * norm * pow(cos_alpha, mat->shininess) * mat->color;
+        }
     }
+#endif
 
     return fd + fs;
 }
 
-//  BRDF direction sampling 
+// ----------------- BRDF direction sampling -----------------
 
 inline int sample_brdf_direction(const Material* mat,
                                  const vec3& n,
                                  const vec3& wo,
                                  vec3* wi_out,
                                  double* pdf_out) {
-    double kd = mat->kd;
-    double ks = mat->ks;
-    if (kd < 0.0) kd = 0.0;
-    if (ks < 0.0) ks = 0.0;
+    double kd, ks;
+    get_effective_kd_ks(mat, &kd, &ks);
+
     double sum = kd + ks;
     double pd = 1.0, ps = 0.0;
     if (sum > 0.0) {
@@ -124,11 +160,15 @@ inline int sample_brdf_direction(const Material* mat,
     int use_diffuse = (u < pd);
 
     vec3 wi;
-    if (use_diffuse) {
+    // ---- Diffuse branch ----
+    if (use_diffuse || ks <= 0.0) {
         double u1 = rand01();
         double u2 = rand01();
         wi = sample_cosine_hemisphere(n, u1, u2);
-    } else {
+    }
+    // ---- Phong specular branch（只有在開啟時才有機會走到）----
+#if ENABLE_PHONG_SPECULAR
+    else {
         vec3 rdir = reflect_vec(-unit_vector(wo), n);
         if (rdir.length_squared() == 0.0) return 0;
         double u1 = rand01();
@@ -136,10 +176,17 @@ inline int sample_brdf_direction(const Material* mat,
         wi = sample_phong_lobe(rdir, mat->shininess, u1, u2);
         if (dot(n, wi) <= 0.0) wi = -wi;
     }
+#endif
 
     double pdf_diff = cosine_hemisphere_pdf(n, wi);
     vec3 rdir = reflect_vec(-unit_vector(wo), n);
-    double pdf_spec = phong_lobe_pdf(mat->shininess, rdir, wi);
+    double pdf_spec = 0.0;
+#if ENABLE_PHONG_SPECULAR
+    if (ks > 0.0) {
+        pdf_spec = phong_lobe_pdf(mat->shininess, rdir, wi);
+    }
+#endif
+
     double pdf = pd * pdf_diff + ps * pdf_spec;
     if (pdf <= 0.0) return 0;
 
