@@ -267,7 +267,7 @@ void render_mis_weight_image(const Scene* scene,
         return;
     }
 
-    const int MAX_COLOR = 256;
+    const int MAX_COLOR = 255;
 
     fprintf(out, "P3\n%d %d\n%d\n", image_width, image_height, MAX_COLOR);
 
@@ -351,3 +351,4 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
