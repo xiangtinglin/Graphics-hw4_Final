@@ -1,3 +1,4 @@
+// Last confirm date 2025/12/06 
 #ifndef SPEED_UP_H
 #define SPEED_UP_H
 
@@ -30,6 +31,12 @@ struct SphereLight {
     Material mat;
 };
 
+struct Sphere {
+    point3  center;
+    double  radius;
+    Material mat;
+};
+
 struct Triangle {
     point3 v0, v1, v2;
     vec3   normal;
@@ -56,6 +63,7 @@ inline void set_face_normal(const Ray* r, const vec3& outward, HitRecord* rec) {
 
 #define MAX_LIGHTS 64
 #define MAX_TRIS   1024
+#define MAX_SPHERES  128
 
 struct AABB {
     vec3 minimum;
@@ -134,6 +142,9 @@ struct Scene {
     SphereLight lights[MAX_LIGHTS];
     int         num_lights;
 
+    Sphere      spheres[MAX_SPHERES];
+    int         num_spheres;
+
     Triangle    triangles[MAX_TRIS];
     int         num_tris;
 
@@ -169,6 +180,35 @@ inline int hit_sphere(const SphereLight* s, int light_index,
     rec->emission  = s->emission;
     rec->is_light  = (s->emission.x() > 0.0 || s->emission.y() > 0.0 || s->emission.z() > 0.0);
     rec->light_index = light_index;
+    return 1;
+}
+
+// 一般非發光球的 intersection
+inline int hit_sphere_geom(const Sphere* s,
+                           const Ray* r, double t_min, double t_max,
+                           HitRecord* rec) {
+    vec3 oc = r->orig - s->center;
+    double a = dot(r->dir, r->dir);
+    double half_b = dot(oc, r->dir);
+    double c = dot(oc, oc) - s->radius * s->radius;
+    double discriminant = half_b * half_b - a * c;
+    if (discriminant < 0) return 0;
+    double sqrtd = sqrt(discriminant);
+
+    double root = (-half_b - sqrtd) / a;
+    if (root < t_min || root > t_max) {
+        root = (-half_b + sqrtd) / a;
+        if (root < t_min || root > t_max) return 0;
+    }
+
+    rec->t = root;
+    rec->p = ray_at(r, rec->t);
+    vec3 outward = (rec->p - s->center) / s->radius;
+    set_face_normal(r, outward, rec);
+    rec->mat       = &s->mat;
+    rec->emission  = vec3(0.0, 0.0, 0.0);
+    rec->is_light  = 0;
+    rec->light_index = -1;
     return 1;
 }
 
@@ -333,7 +373,16 @@ inline int hit_scene(const Scene* scene,
         }
     }
 
-    // Lights
+    // 一般非發光球
+    for (int i = 0; i < scene->num_spheres; ++i) {
+        if (hit_sphere_geom(&scene->spheres[i], r, t_min, closest, &temp)) {
+            hit_anything = 1;
+            closest = temp.t;
+            *rec = temp;
+        }
+    }
+
+    // Lights (emissive spheres)
     for (int i = 0; i < scene->num_lights; ++i) {
         if (hit_sphere(&scene->lights[i], i, r, t_min, closest, &temp)) {
             hit_anything = 1;
