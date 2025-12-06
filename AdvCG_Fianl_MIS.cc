@@ -34,7 +34,7 @@ int load_scene_from_file(const char* filename,
 
     Material currentMat;
     currentMat.color        = vec3(1.0,1.0,1.0);
-    currentMat.ka           = 0.0;
+    //currentMat.ka           = 0.0;
     currentMat.kd           = 1.0;
     currentMat.ks           = 0.0;
     currentMat.shininess    = 16.0;
@@ -100,11 +100,11 @@ int load_scene_from_file(const char* filename,
                 fprintf(stderr, "Error: bad 'R' line in %s\n", filename);
             }
         } else if (strcmp(tag,"M") == 0) {
-            double cr,cg,cb, ka,kd,ks, shininess,refl;
-            if (sscanf(p, "%*s %lf %lf %lf %lf %lf %lf %lf %lf",
-                       &cr,&cg,&cb,&ka,&kd,&ks,&shininess,&refl) == 8) {
+            double cr, cg, cb, kd, ks, shininess, refl;
+            if (sscanf(p, "%*s %lf %lf %lf %lf %lf %lf %lf",
+                       &cr,&cg,&cb,&kd,&ks,&shininess,&refl) == 8) {
                 currentMat.color        = vec3(cr,cg,cb);
-                currentMat.ka           = ka;
+                //currentMat.ka           = ka;
                 currentMat.kd           = kd;
                 currentMat.ks           = ks;
                 currentMat.shininess    = shininess;
@@ -351,4 +351,5 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
 
