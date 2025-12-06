@@ -1,3 +1,4 @@
+// Last confirm date 2025/12/06 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -27,6 +28,7 @@ int load_scene_from_file(const char* filename,
     }
 
     scene->num_lights    = 0;
+    scene->num_spheres   = 0;
     scene->num_tris      = 0;
     scene->num_bvh_nodes = 0;
 
@@ -126,6 +128,22 @@ int load_scene_from_file(const char* filename,
             } else {
                 fprintf(stderr, "Warning: bad 'SL' line in %s, ignoring.\n", filename);
             }
+        } else if (strcmp(tag,"S") == 0) {
+            double ox,oy,oz,radius;
+            if (sscanf(p, "%*s %lf %lf %lf %lf",
+                       &ox,&oy,&oz,&radius) == 4) {
+                if (scene->num_spheres < MAX_SPHERES) {
+                    Sphere* s = &scene->spheres[scene->num_spheres++];
+                    s->center = point3(ox,oy,oz);
+                    s->radius = radius;
+                    s->mat    = currentMat;
+                } else {
+                    fprintf(stderr, "Warning: too many spheres, ignoring extra.\n");
+                }
+            } else {
+                fprintf(stderr, "Warning: bad 'S' line in %s, ignoring.\n", filename);
+            }
+
         } else if (strcmp(tag,"T") == 0) {      //max triangles = 64
             double x0,y0,z0,x1,y1,z1,x2,y2,z2;
             if (sscanf(p, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf",
@@ -309,7 +327,7 @@ int main(int argc, char** argv) {
 
     srand(42);
 
-    const int SAMPLES_PER_PIXEL  = 10;
+    const int SAMPLES_PER_PIXEL  = 30;
     const int MAX_DEPTH          = 5;
 
     render_image(&scene, &cam, "AdvCG_light.ppm",
