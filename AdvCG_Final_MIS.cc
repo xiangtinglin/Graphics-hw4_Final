@@ -10,8 +10,18 @@
 #include "Speed_up.h"
 #include "tracer_MIS.h"
 
+#include <mach-o/dyld.h>
+#include <limits.h>
+#include <unistd.h>
+#include <libgen.h>
+
+
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
+#endif
+
+#ifndef OUT_DIR
+#define OUT_DIR ""
 #endif
 
 //  Scene loading: E / V / F / R / M / SL / T 
@@ -309,6 +319,17 @@ void render_mis_weight_image(const Scene* scene,
 //  main 
 
 int main(int argc, char** argv) {
+    // 保證 Finder 雙擊時，相對路徑會以執行檔所在目錄為基準
+    {
+        char exe_path[PATH_MAX];
+        uint32_t size = sizeof(exe_path);
+
+        if (_NSGetExecutablePath(exe_path, &size) == 0) {
+            chdir(dirname(exe_path));
+        }
+    }
+
+
     const char* input_file = "input.txt";
     if (argc > 1) {
         input_file = argv[1];
@@ -330,27 +351,26 @@ int main(int argc, char** argv) {
     const int SAMPLES_PER_PIXEL  = 30;
     const int MAX_DEPTH          = 5;
 
-    render_image(&scene, &cam, "AdvCG_light.ppm",
+    render_image(&scene, &cam, OUT_DIR "AdvCG_light.ppm",
                  MODE_LIGHT,
                  image_width, image_height,
                  SAMPLES_PER_PIXEL, MAX_DEPTH);
 
-    render_image(&scene, &cam, "AdvCG_bsdf.ppm",
+    render_image(&scene, &cam, OUT_DIR "AdvCG_bsdf.ppm",
                  MODE_BRDF,
                  image_width, image_height,
                  SAMPLES_PER_PIXEL, MAX_DEPTH);
 
-    render_image(&scene, &cam, "AdvCG_mis.ppm",
+    render_image(&scene, &cam, OUT_DIR "AdvCG_mis.ppm",
                  MODE_MIS,
                  image_width, image_height,
                  SAMPLES_PER_PIXEL, MAX_DEPTH);
 
-    render_mis_weight_image(&scene, &cam, "AdvCG_mis_weight.ppm",
+    render_mis_weight_image(&scene, &cam, OUT_DIR "AdvCG_mis_weight.ppm",
                             image_width, image_height,
                             SAMPLES_PER_PIXEL);    
 
     return 0;
 }
-
 
 
