@@ -1,0 +1,7 @@
+柯
+Input file -有小改位置
+BSDF運作 - OK
+Light-sampling運作 - OK
+BVM運作 - OK 但沒有比較值
+MIS - OK 有運作但基本上只用了 light sampling 的結果
+新增權重圖 - 參考https://cw.fel.cvut.cz/b241/_media/courses/b4m39rso/tutorials/multiple_importance_sampling_101.pdf

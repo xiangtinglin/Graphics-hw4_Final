@@ -62,7 +62,7 @@ inline void set_face_normal(const Ray* r, const vec3& outward, HitRecord* rec) {
 //  Scene + BVH 
 
 #define MAX_LIGHTS 64
-#define MAX_TRIS   1024
+#define MAX_TRIS   2000500  // [修改] 加大到 10 萬，確保可以塞入超多細節
 #define MAX_SPHERES  128
 
 struct AABB {
