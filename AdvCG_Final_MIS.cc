@@ -335,7 +335,8 @@ int main(int argc, char** argv) {
         input_file = argv[1];
     }
 
-    Scene  scene;
+    static Scene scene;
+
     Camera cam;
     int image_width  = 0;
     int image_height = 0;
