@@ -31,8 +31,8 @@ SOURCE_INPUT = "input.txt"
 TARGET_INPUT = os.path.join(OUTPUT_DIR, "input_stress.txt")
 
 # [設定] 高解析度 + 大量隱形幾何
-TARGET_WIDTH = 16         
-TARGET_HEIGHT = 16
+TARGET_WIDTH = 512         
+TARGET_HEIGHT = 512
 NUM_DUMMY_TRIS = 5000 # 增加 5000 個隱形三角形來拖慢 Linear
 
 print(f"🔥 [Benchmark V26 Final] Invisible Geometry Stress Test")
