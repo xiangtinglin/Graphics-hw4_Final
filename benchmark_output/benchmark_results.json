@@ -1,7 +1,7 @@
 {
-    "linear_time": 107.84397077560425,
-    "bvh_time": 120.13625502586365,
-    "speedup": 0.8976804774910534,
-    "resolution": "2048x2048",
-    "timestamp": "Mon Dec 15 00:15:55 2025"
+    "linear_time": 1.0385661125183105,
+    "bvh_time": 0.2564511299133301,
+    "speedup": 4.049762279734557,
+    "resolution": "16x16",
+    "timestamp": "Mon Dec 15 01:11:07 2025"
 }
