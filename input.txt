@@ -4,7 +4,7 @@
 E 0.0 0.0 0.0                  # eye position
 V 0.0 0.0 1.0  0.0 1.0 0.0     # View Direction
 F 60                           # FOV
-R 256 256                      # Resolution
+R 512 512                      # Resolution
 
 # ------------------------------------------------------------
 # [MODIFIED] Swapped Positions: Lights on Ground, Glass Spheres on Ceiling
