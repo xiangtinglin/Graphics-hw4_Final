@@ -21,8 +21,8 @@ LIGHT_DESCENT_SPEED = 0.2 # 光源移動速度
 OUTPUT_DIR = "animation_frames_original"  # 改個名字避免跟優化版混淆
 BUILD_DIR = "animation_build_original"
 COMPILER = "g++"
-SOURCE_FILE = "AdvCG_Final_MIS.cc"
-INPUT_FILE = "input.txt"
+SOURCE_FILE = "../Main/AdvCG_Final_MIS.cc"
+INPUT_FILE = "../Main/input.txt"
 
 # 確保當前目錄正確
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -56,13 +56,25 @@ def compile_renderer():
     src_path = os.path.join(BUILD_DIR, "anim_main_original.cc")
     with open(src_path, 'w') as f: f.write(src)
 
-    # 複製原始 header 到 build 目錄，確保讀到正確的檔案
+
+    # 複製原始 header 到 build 目錄
+    # 設定標頭檔所在的資料夾 (假設在 ../Main)
+    HEADER_DIR = os.path.join(SCRIPT_DIR, "../Main")
+
     headers = ["Speed_up.h", "tracer_light_source.h", "tracer_BSDF_sampling.h", "tracer_MIS.h", "vec3.h", "tracer_camera.h"]
+    
     for h in headers:
-        if os.path.exists(h):
+        src_header_path = os.path.join(HEADER_DIR, h)
+        
+        # 1. 先去 Main 資料夾找
+        if os.path.exists(src_header_path):
+            shutil.copy(src_header_path, os.path.join(BUILD_DIR, h))
+        # 2. 如果找不到，試試看當前目錄 (tool)
+        elif os.path.exists(h):
             shutil.copy(h, os.path.join(BUILD_DIR, h))
         else:
             print(f"❌ Missing header: {h}")
+            print(f"   Checked locations:\n   1. {src_header_path}\n   2. {os.path.abspath(h)}")
             return False
 
     # 編譯參數 (只開基本優化 -O3，不開 fast-math 或其他特殊 flag)
