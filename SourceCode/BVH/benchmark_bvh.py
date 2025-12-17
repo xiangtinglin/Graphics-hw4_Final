@@ -26,8 +26,8 @@ except ImportError:
 # ================= 參數設定 =================
 OUTPUT_DIR = "benchmark_output"
 COMPILER = "g++"
-SOURCE_FILE = "AdvCG_Final_MIS.cc"
-SOURCE_INPUT = "input.txt" 
+SOURCE_FILE = "../Main/AdvCG_Final_MIS.cc"
+SOURCE_INPUT = "../Main/input.txt" 
 TARGET_INPUT = os.path.join(OUTPUT_DIR, "input_stress.txt")
 
 # [設定] 高解析度 + 大量隱形幾何
@@ -325,13 +325,23 @@ inline int hit_scene(const Scene* scene, const Ray* r, double t_min, double t_ma
 def generate_source_files():
     print("🛠 [2/5] Generating Variants...")
 
+    # [修正] 取得原始碼所在的資料夾 (例如 "../Main")
+    src_dir = os.path.dirname(SOURCE_FILE)
+
     headers = ["tracer_camera.h", "tracer_light_source.h", 
                "tracer_BSDF_sampling.h", "tracer_MIS.h", "vec3.h"]
-    for h in headers:
-        if os.path.exists(h):
-            shutil.copy(h, os.path.join(OUTPUT_DIR, h))
     
-    # 寫入優化後的 BVH (使用中位數切割以應對大量幾何)
+    for h in headers:
+        # [修正] 組合完整路徑，去 src_dir 找檔案
+        src_path = os.path.join(src_dir, h)
+        
+        if os.path.exists(src_path):
+            shutil.copy(src_path, os.path.join(OUTPUT_DIR, h))
+        else:
+            # 增加一個警告，如果還是找不到會告訴你
+            print(f"⚠️ Warning: Header file '{h}' not found in '{src_dir}'")
+    
+    # 寫入優化後的 BVH
     with open(os.path.join(OUTPUT_DIR, "Speed_up.h"), "w") as f:
         f.write(CODE_SPEEDUP_MEDIAN)
 
